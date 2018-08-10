@@ -1,4 +1,4 @@
-import plugin from '../src/scatter';
+import ScatterJS from '../src/scatter';
 import SocketService from '../src/services/SocketService';
 import "isomorphic-fetch"
 import { assert } from 'chai';
@@ -20,12 +20,12 @@ const setter = x => new Promise(resolve => resolve(key = x));
 const network = {
     blockchain:'eos',
     protocol:'http',
-    host:'192.168.1.7',
+    host:'192.168.1.6',
     port:8888,
     chainId:'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f'
 }
 
-plugin.connect("Test Plugin", getter, setter);
+ScatterJS.scatter.connect("Test Plugin");
 
 let identity;
 
@@ -34,7 +34,7 @@ describe('Api', () => {
     it('should create a connection to Scatter', done => {
         new Promise(async() => {
             setTimeout(() => {
-                assert(plugin.isConnected(), 'Could not connect to Scatter');
+                assert(ScatterJS.scatter.isConnected(), 'Could not connect to Scatter');
                 done();
             }, 2000);
         });
@@ -175,7 +175,7 @@ describe('Api', () => {
             };
 
             // Testing send via standard HTTP
-            const res = await fetch('http://192.168.1.7:8888/v1/chain/push_transaction', {
+            const res = await fetch(`http://${network.host}:8888/v1/chain/push_transaction`, {
                 method: "POST",
                 headers: {
                     'Accept': 'application/json, text/plain, */*',

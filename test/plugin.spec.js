@@ -1,4 +1,4 @@
-import scatter from '../src/scatter';
+import ScatterJS from '../dist/scatter.esm';
 import Eos from 'eosjs';
 import "isomorphic-fetch"
 import { assert } from 'chai';
@@ -20,12 +20,13 @@ const setter = x => new Promise(resolve => resolve(key = x));
 const network = {
     blockchain:'eos',
     protocol:'http',
-    host:'192.168.1.7',
+    host:'192.168.1.6',
     port:8888,
     chainId:'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f'
 };
 
-scatter.connect("Test Plugin", getter, setter);
+
+let scatter = null;
 
 let identity;
 
@@ -33,28 +34,25 @@ describe('Plugin', () => {
 
     it('should create a connection to Scatter', done => {
         new Promise(async() => {
-            setTimeout(() => {
-                assert(scatter.isConnected(), "Could not connect")
+            ScatterJS.scatter.connect("Test Plugin").then(connected => {
+                assert(connected, 'Not connected');
+                scatter = ScatterJS.scatter;
                 done();
-            }, 1000)
+            })
         });
     });
 
     it('should forget an identity if existing', done => {
         new Promise(async() => {
-            setTimeout(async () => {
-                assert(await scatter.forgetIdentity(), "Could not forget");
-                done();
-            }, 1000)
+            assert(await scatter.forgetIdentity(), "Could not forget");
+            done();
         });
     });
 
     it('should get an identity', done => {
         new Promise(async() => {
-            setTimeout(async () => {
-                assert(await scatter.getIdentity({accounts:[network]}), "Could not get identity");
-                done();
-            }, 1000)
+            assert(await scatter.getIdentity({accounts:[network]}), "Could not get identity");
+            done();
         });
     });
 
@@ -64,6 +62,7 @@ describe('Plugin', () => {
             const transfer = await eos.transfer('testacc', 'eosio', '1.0000 EOS', '');
             assert(transfer.hasOwnProperty('transaction_id'), "Couldn't sign transfer")
             done();
+
         });
     });
 

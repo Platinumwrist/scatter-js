@@ -89,7 +89,7 @@ class Scatter {
         });
     }
 
-    getIdentity(requiredFields){
+    async getIdentity(requiredFields){
         throwNoAuth();
         return SocketService.sendApiRequest({
             type:'getOrRequestIdentity',

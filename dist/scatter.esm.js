@@ -6,73 +6,134 @@ import HookedWalletSubprovider from 'web3-provider-engine/subproviders/hooked-wa
 import ethUtil from 'ethereumjs-util';
 import 'isomorphic-fetch';
 
-const host = 'http://localhost:50005';
-
-let socket = null;
-let connected = false;
-
-let plugin;
-let openRequests = [];
-
-let allowReconnects = true;
-let reconnectionTimeout = null;
-
-const reconnectOnAbnormalDisconnection = async () => {
-    if(!allowReconnects) return;
-
-	clearTimeout(reconnectionTimeout);
-	reconnectionTimeout = setTimeout(() => {
-		SocketService.link();
-	}, 1000);
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
 };
 
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
 
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
 
-class SocketService {
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
 
-    static init(_plugin, timeout = 60000){
-        plugin = _plugin;
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
 
-        this.timeout = timeout;
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
+};
+
+var host = 'http://localhost:50005';
+
+var socket = null;
+var connected = false;
+
+var plugin = void 0;
+var openRequests = [];
+
+var allowReconnects = true;
+var reconnectionTimeout = null;
+
+var reconnectOnAbnormalDisconnection = async function reconnectOnAbnormalDisconnection() {
+    if (!allowReconnects) return;
+
+    clearTimeout(reconnectionTimeout);
+    reconnectionTimeout = setTimeout(function () {
+        SocketService.link();
+    }, 1000);
+};
+
+var SocketService = function () {
+    function SocketService() {
+        classCallCheck(this, SocketService);
     }
 
-    static async link(){
-        return Promise.race([
-            new Promise((resolve, reject) => setTimeout(async () => {
-                if(connected) return;
-                resolve(false);
+    createClass(SocketService, null, [{
+        key: 'init',
+        value: function init(_plugin) {
+            var timeout = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 60000;
 
-                if(socket) {
-                    socket.disconnect();
-                    socket = null;
-                }
+            plugin = _plugin;
 
-                reconnectOnAbnormalDisconnection();
-            }, this.timeout)),
-            new Promise(async (resolve, reject) => {
+            this.timeout = timeout;
+        }
+    }, {
+        key: 'link',
+        value: async function link() {
+            var _this = this;
 
-                socket = io.connect(`${host}/scatter`, { reconnection: false });
+            return Promise.race([new Promise(function (resolve, reject) {
+                return setTimeout(async function () {
+                    if (connected) return;
+                    resolve(false);
 
-                socket.on('connected', async () => {
+                    if (socket) {
+                        socket.disconnect();
+                        socket = null;
+                    }
+
+                    reconnectOnAbnormalDisconnection();
+                }, _this.timeout);
+            }), new Promise(async function (resolve, reject) {
+
+                socket = io.connect(host + '/scatter', { reconnection: false });
+
+                socket.on('connected', async function () {
                     clearTimeout(reconnectionTimeout);
                     connected = true;
                     resolve(true);
                 });
 
-                socket.on('event', event => {
+                socket.on('event', function (event) {
                     console.log('event', event);
                 });
 
-                socket.on('api', result => {
-                    const openRequest = openRequests.find(x => x.id === result.id);
-                    if(!openRequest) return;
-                    if(typeof result.result === 'object'
-                        && result.result !== null
-                        && result.result.hasOwnProperty('isError')) openRequest.reject(result.result);
-                    else openRequest.resolve(result.result);
+                socket.on('api', function (result) {
+                    var openRequest = openRequests.find(function (x) {
+                        return x.id === result.id;
+                    });
+                    if (!openRequest) return;
+                    if (_typeof(result.result) === 'object' && result.result !== null && result.result.hasOwnProperty('isError')) openRequest.reject(result.result);else openRequest.resolve(result.result);
                 });
 
-                socket.on('disconnect', async () => {
+                socket.on('disconnect', async function () {
                     console.log('Disconnected');
                     connected = false;
                     socket = null;
@@ -81,71 +142,87 @@ class SocketService {
                     reconnectOnAbnormalDisconnection();
                 });
 
-                socket.on('connect_error', async () => {
+                socket.on('connect_error', async function () {
                     allowReconnects = false;
                     resolve(false);
                 });
 
-                socket.on('rejected', async reason => {
+                socket.on('rejected', async function (reason) {
                     console.error('reason', reason);
                     reject(reason);
                 });
-            })
-        ])
-    }
+            })]);
+        }
+    }, {
+        key: 'isConnected',
+        value: function isConnected() {
+            return connected;
+        }
+    }, {
+        key: 'disconnect',
+        value: async function disconnect() {
+            socket.disconnect();
+            return true;
+        }
+    }, {
+        key: 'sendApiRequest',
+        value: async function sendApiRequest(request) {
+            return new Promise(async function (resolve, reject) {
+                request.id = Math.round(Math.random() * 100000000 + 1);
 
-    static isConnected(){
-        return connected;
-    }
+                if (request.hasOwnProperty('payload') && !request.payload.hasOwnProperty('origin')) {
+                    var origin = void 0;
+                    if (typeof location !== 'undefined') {
+                        if (location.hasOwnProperty('hostname') && location.hostname.length && location.hostname !== 'localhost') origin = location.hostname;else origin = plugin;
+                    } else origin = plugin;
 
-    static async disconnect(){
-        socket.disconnect();
-        return true;
-    }
+                    request.payload.origin = origin;
+                }
 
-    static async sendApiRequest(request){
-        return new Promise(async (resolve, reject) => {
-            request.id = Math.round(Math.random() * 100000000 + 1);
+                openRequests.push(Object.assign(request, { resolve: resolve, reject: reject }));
+                socket.emit('api', { data: request, plugin: plugin });
+            });
+        }
+    }]);
+    return SocketService;
+}();
 
-            if(request.hasOwnProperty('payload') && !request.payload.hasOwnProperty('origin')) {
-                let origin;
-                if(typeof location !== 'undefined')
-                    if(location.hasOwnProperty('hostname') && location.hostname.length && location.hostname !== 'localhost')
-                        origin = location.hostname;
-                    else origin = plugin;
-                else origin = plugin;
+var BLOCKCHAIN_SUPPORT = 'blockchain_support';
 
-                request.payload.origin = origin;
-            }
+var Plugin = function Plugin() {
+    var _name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
 
-            openRequests.push(Object.assign(request, {resolve, reject}));
-            socket.emit('api', {data:request, plugin});
-        });
-    }
+    var _type = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '';
 
-}
+    classCallCheck(this, Plugin);
 
-const BLOCKCHAIN_SUPPORT = 'blockchain_support';
-
-class Plugin {
-
-    constructor(_name = '', _type = ''){
-        this.name = _name;
-        this.type = _type;
-    }
-
-}
-
-const Blockchains = {
-    EOS:'eos',
-    ETH:'eth'
+    this.name = _name;
+    this.type = _type;
 };
 
-const BlockchainsArray =
-    Object.keys(Blockchains).map(key => ({key, value:Blockchains[key]}));
+var Blockchains = {
+    EOS: 'eos',
+    ETH: 'eth'
+};
 
-class Network {
-    constructor(_name = '', _protocol = 'https', _host = '', _port = 0, blockchain = Blockchains.EOS, chainId = ''){
+var BlockchainsArray = Object.keys(Blockchains).map(function (key) {
+    return { key: key, value: Blockchains[key] };
+});
+
+var Network = function () {
+    function Network() {
+        var _name = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+
+        var _protocol = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'https';
+
+        var _host = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
+
+        var _port = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
+
+        var blockchain = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : Blockchains.EOS;
+        var chainId = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : '';
+        classCallCheck(this, Network);
+
         this.name = _name;
         this.protocol = _protocol;
         this.host = _host;
@@ -154,440 +231,557 @@ class Network {
         this.chainId = chainId.toString();
     }
 
-    static placeholder(){ return new Network(); }
+    createClass(Network, [{
+        key: 'unique',
+        value: function unique() {
+            return (this.blockchain + ':' + (this.chainId.length ? 'chain:' + this.chainId : this.host + ':' + this.port)).toLowerCase();
+        }
+    }, {
+        key: 'hostport',
+        value: function hostport() {
+            return '' + this.host + (this.port ? ':' : '') + this.port;
+        }
+    }, {
+        key: 'fullhost',
+        value: function fullhost() {
+            return this.protocol + '://' + this.host + (this.port ? ':' : '') + this.port;
+        }
+    }, {
+        key: 'clone',
+        value: function clone() {
+            return Network.fromJson(JSON.parse(JSON.stringify(this)));
+        }
+    }, {
+        key: 'isEmpty',
+        value: function isEmpty() {
+            return !this.host.length;
+        }
+    }, {
+        key: 'isValid',
+        value: function isValid() {
+            return this.protocol.length && this.host.length && this.port || this.chainId.length;
+        }
+    }], [{
+        key: 'placeholder',
+        value: function placeholder() {
+            return new Network();
+        }
+    }, {
+        key: 'fromJson',
+        value: function fromJson(json) {
+            var p = Object.assign(Network.placeholder(), json);
+            p.chainId = p.chainId ? p.chainId.toString() : '';
+            return p;
+        }
+    }, {
+        key: 'fromUnique',
+        value: function fromUnique(netString) {
+            var blockchain = netString.split(':')[0];
+            if (netString.indexOf(':chain:') > -1) return new Network('', '', '', '', blockchain, netString.replace(blockchain + ':chain:', ''));
 
-    static fromJson(json){
-        const p = Object.assign(Network.placeholder(), json);
-        p.chainId = p.chainId ? p.chainId.toString() : '';
-        return p;
+            var splits = netString.replace(blockchain + ':', '').split(':');
+            return new Network('', '', splits[0], parseInt(splits[1] || 80), blockchain);
+        }
+    }]);
+    return Network;
+}();
+
+var proxy = function proxy(dummy, handler) {
+    return new Proxy(dummy, handler);
+};
+
+var EOS = function (_Plugin) {
+    inherits(EOS, _Plugin);
+
+    function EOS() {
+        classCallCheck(this, EOS);
+        return possibleConstructorReturn(this, (EOS.__proto__ || Object.getPrototypeOf(EOS)).call(this, Blockchains.EOS, BLOCKCHAIN_SUPPORT));
     }
 
-    static fromUnique(netString){
-        const blockchain = netString.split(':')[0];
-        if(netString.indexOf(':chain:') > -1)
-            return new Network('', '', '','',blockchain, netString.replace(`${blockchain}:chain:`,''));
+    createClass(EOS, [{
+        key: 'signatureProvider',
+        value: function signatureProvider() {
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
 
-        const splits = netString.replace(`${blockchain}:`, '').split(':');
-        return new Network('', '', splits[0], parseInt(splits[1] || 80), blockchain)
-    }
+            var throwIfNoIdentity = args[0];
 
-    unique(){ return (`${this.blockchain}:` + (this.chainId.length ? `chain:${this.chainId}` : `${this.host}:${this.port}`)).toLowerCase(); }
-    hostport(){ return `${this.host}${this.port ? ':' : ''}${this.port}` }
-    fullhost(){ return `${this.protocol}://${this.host}${this.port ? ':' : ''}${this.port}` }
-    clone(){ return Network.fromJson(JSON.parse(JSON.stringify(this))) }
-    isEmpty(){ return !this.host.length; }
-    isValid(){ return (this.protocol.length && this.host.length && this.port) || this.chainId.length }
-}
+            // Protocol will be deprecated.
+            return function (network, _eos) {
+                var _options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-const proxy = (dummy, handler) => new Proxy(dummy, handler);
+                network = Network.fromJson(network);
+                if (!network.isValid()) throw Error.noNetwork();
+                var httpEndpoint = network.protocol + '://' + network.hostport();
 
-class EOS extends Plugin {
+                var chainId = network.hasOwnProperty('chainId') && network.chainId.length ? network.chainId : options.chainId;
 
-    constructor(){
-        super(Blockchains.EOS, BLOCKCHAIN_SUPPORT);
-    }
+                // The proxy stands between the eosjs object and scatter.
+                // This is used to add special functionality like adding `requiredFields` arrays to transactions
+                return proxy(_eos({ httpEndpoint: httpEndpoint, chainId: chainId }), {
+                    get: function get$$1(eosInstance, method) {
 
+                        var returnedFields = null;
 
-    signatureProvider(...args){
-
-        const throwIfNoIdentity = args[0];
-
-        // Protocol will be deprecated.
-        return (network, _eos, _options = {}) => {
-
-            network = Network.fromJson(network);
-            if(!network.isValid()) throw Error.noNetwork();
-            const httpEndpoint = `${network.protocol}://${network.hostport()}`;
-
-            const chainId = network.hasOwnProperty('chainId') && network.chainId.length ? network.chainId : options.chainId;
-
-            // The proxy stands between the eosjs object and scatter.
-            // This is used to add special functionality like adding `requiredFields` arrays to transactions
-            return proxy(_eos({httpEndpoint, chainId}), {
-                get(eosInstance, method) {
-
-                    let returnedFields = null;
-
-                    return (...args) => {
-
-                        if(args.find(arg => arg.hasOwnProperty('keyProvider'))) throw Error.usedKeyProvider();
-
-                        // The signature provider which gets elevated into the user's Scatter
-                        const signProvider = async signargs => {
-                            throwIfNoIdentity();
-
-                            const requiredFields = args.find(arg => arg.hasOwnProperty('requiredFields')) || {requiredFields:{}};
-                            const payload = Object.assign(signargs, { blockchain:Blockchains.EOS, network, requiredFields:requiredFields.requiredFields });
-                            const result = await SocketService.sendApiRequest({
-                                type:'requestSignature',
-                                payload
-                            });
-
-                            // No signature
-                            if(!result) return null;
-
-                            if(result.hasOwnProperty('signatures')){
-                                // Holding onto the returned fields for the final result
-                                returnedFields = result.returnedFields;
-
-                                // Grabbing buf signatures from local multi sig sign provider
-                                let multiSigKeyProvider = args.find(arg => arg.hasOwnProperty('signProvider'));
-                                if(multiSigKeyProvider){
-                                    result.signatures.push(multiSigKeyProvider.signProvider(signargs.buf, signargs.sign));
-                                }
-
-                                // Returning only the signatures to eosjs
-                                return result.signatures;
+                        return function () {
+                            for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                                args[_key2] = arguments[_key2];
                             }
 
-                            return result;
-                        };
+                            if (args.find(function (arg) {
+                                return arg.hasOwnProperty('keyProvider');
+                            })) throw Error.usedKeyProvider();
 
-                        // TODO: We need to check about the implications of multiple eosjs instances
-                        return new Promise((resolve, reject) => {
-                            _eos(Object.assign(_options, {httpEndpoint, signProvider, chainId}))[method](...args)
-                                .then(result => {
+                            // The signature provider which gets elevated into the user's Scatter
+                            var signProvider = async function signProvider(signargs) {
+                                throwIfNoIdentity();
+
+                                var requiredFields = args.find(function (arg) {
+                                    return arg.hasOwnProperty('requiredFields');
+                                }) || { requiredFields: {} };
+                                var payload = Object.assign(signargs, { blockchain: Blockchains.EOS, network: network, requiredFields: requiredFields.requiredFields });
+                                var result = await SocketService.sendApiRequest({
+                                    type: 'requestSignature',
+                                    payload: payload
+                                });
+
+                                // No signature
+                                if (!result) return null;
+
+                                if (result.hasOwnProperty('signatures')) {
+                                    // Holding onto the returned fields for the final result
+                                    returnedFields = result.returnedFields;
+
+                                    // Grabbing buf signatures from local multi sig sign provider
+                                    var multiSigKeyProvider = args.find(function (arg) {
+                                        return arg.hasOwnProperty('signProvider');
+                                    });
+                                    if (multiSigKeyProvider) {
+                                        result.signatures.push(multiSigKeyProvider.signProvider(signargs.buf, signargs.sign));
+                                    }
+
+                                    // Returning only the signatures to eosjs
+                                    return result.signatures;
+                                }
+
+                                return result;
+                            };
+
+                            // TODO: We need to check about the implications of multiple eosjs instances
+                            return new Promise(function (resolve, reject) {
+                                var _eos2;
+
+                                (_eos2 = _eos(Object.assign(_options, { httpEndpoint: httpEndpoint, signProvider: signProvider, chainId: chainId })))[method].apply(_eos2, args).then(function (result) {
 
                                     // Standard method ( ie. not contract )
-                                    if(!result.hasOwnProperty('fc')){
-                                        result = Object.assign(result, {returnedFields});
+                                    if (!result.hasOwnProperty('fc')) {
+                                        result = Object.assign(result, { returnedFields: returnedFields });
                                         resolve(result);
                                         return;
                                     }
 
                                     // Catching chained promise methods ( contract .then action )
-                                    const contractProxy = proxy(result, {
-                                        get(instance,method){
-                                            if(method === 'then') return instance[method];
-                                            return (...args) => {
-                                                return new Promise(async (res, rej) => {
-                                                    instance[method](...args).then(actionResult => {
-                                                        res(Object.assign(actionResult, {returnedFields}));
-                                                    }).catch(rej);
-                                                })
+                                    var contractProxy = proxy(result, {
+                                        get: function get$$1(instance, method) {
+                                            if (method === 'then') return instance[method];
+                                            return function () {
+                                                for (var _len3 = arguments.length, args = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+                                                    args[_key3] = arguments[_key3];
+                                                }
 
-                                            }
+                                                return new Promise(async function (res, rej) {
+                                                    instance[method].apply(instance, args).then(function (actionResult) {
+                                                        res(Object.assign(actionResult, { returnedFields: returnedFields }));
+                                                    }).catch(rej);
+                                                });
+                                            };
                                         }
                                     });
 
                                     resolve(contractProxy);
-                                }).catch(error => reject(error));
-                        })
+                                }).catch(function (error) {
+                                    return reject(error);
+                                });
+                            });
+                        };
                     }
-                }
-            }); // Proxy
-
+                }); // Proxy
+            };
         }
+    }]);
+    return EOS;
+}(Plugin);
+
+var ethNetwork = void 0;
+
+var ETH = function (_Plugin) {
+    inherits(ETH, _Plugin);
+
+    function ETH() {
+        classCallCheck(this, ETH);
+        return possibleConstructorReturn(this, (ETH.__proto__ || Object.getPrototypeOf(ETH)).call(this, Blockchains.ETH, BLOCKCHAIN_SUPPORT));
     }
-}
 
-let ethNetwork;
+    createClass(ETH, [{
+        key: 'signatureProvider',
+        value: function signatureProvider() {
 
-class ETH extends Plugin {
+            return function (_network, _web3) {
+                ethNetwork = Network.fromJson(_network);
+                if (!ethNetwork.isValid()) throw Error.noNetwork();
 
-    constructor(){
-        super(Blockchains.ETH, BLOCKCHAIN_SUPPORT);
-    }
+                var rpcUrl = ethNetwork.protocol + '://' + ethNetwork.hostport();
 
-    signatureProvider(...args){
+                var engine = new ProviderEngine();
+                var web3 = new _web3(engine);
 
-        return (_network, _web3) => {
-            ethNetwork = Network.fromJson(_network);
-            if(!ethNetwork.isValid()) throw Error.noNetwork();
+                var walletSubprovider = new HookedWalletSubprovider(new ScatterEthereumWallet());
+                engine.addProvider(walletSubprovider);
 
-            const rpcUrl = `${ethNetwork.protocol}://${ethNetwork.hostport()}`;
+                if (ethNetwork.protocol.indexOf('http') > -1) engine.addProvider(new RpcSubprovider({ rpcUrl: rpcUrl }));else engine.addProvider(new WebsocketSubprovider({ rpcUrl: rpcUrl }));
 
-            const engine = new ProviderEngine();
-            const web3 = new _web3(engine);
+                engine.start();
 
-            const walletSubprovider = new HookedWalletSubprovider(new ScatterEthereumWallet());
-            engine.addProvider(walletSubprovider);
-
-            if(ethNetwork.protocol.indexOf('http') > -1) engine.addProvider(new RpcSubprovider({rpcUrl}));
-            else engine.addProvider(new WebsocketSubprovider({rpcUrl}));
-
-            engine.start();
-
-            return web3;
+                return web3;
+            };
         }
-    }
-}
+    }]);
+    return ETH;
+}(Plugin);
 
+var ScatterEthereumWallet = function () {
+    function ScatterEthereumWallet() {
+        classCallCheck(this, ScatterEthereumWallet);
 
-
-class ScatterEthereumWallet {
-    constructor(){
         this.getAccounts = this.getAccounts.bind(this);
         this.signTransaction = this.signTransaction.bind(this);
     }
 
-    async getAccounts(callback) {
-        const result = await SocketService.sendApiRequest({
-            type:'identityFromPermissions',
-            payload:{}
-        });
-        const accounts = !result ? [] : result.accounts
-            .filter(account => account.blockchain === Blockchains.ETH)
-            .map(account => account.address);
+    createClass(ScatterEthereumWallet, [{
+        key: 'getAccounts',
+        value: async function getAccounts(callback) {
+            var result = await SocketService.sendApiRequest({
+                type: 'identityFromPermissions',
+                payload: {}
+            });
+            var accounts = !result ? [] : result.accounts.filter(function (account) {
+                return account.blockchain === Blockchains.ETH;
+            }).map(function (account) {
+                return account.address;
+            });
 
-        callback(null, accounts);
-        return accounts;
-    }
+            callback(null, accounts);
+            return accounts;
+        }
+    }, {
+        key: 'signTransaction',
+        value: async function signTransaction(transaction) {
+            if (!ethNetwork) throw Error.noNetwork();
 
-    async signTransaction(transaction){
-        if(!ethNetwork) throw Error.noNetwork();
+            // Basic settings
+            if (transaction.gas !== undefined) transaction.gasLimit = transaction.gas;
+            transaction.value = transaction.value || '0x00';
+            if (transaction.hasOwnProperty('data')) transaction.data = ethUtil.addHexPrefix(transaction.data);
 
-        // Basic settings
-        if (transaction.gas !== undefined) transaction.gasLimit = transaction.gas;
-        transaction.value = transaction.value || '0x00';
-        if(transaction.hasOwnProperty('data')) transaction.data = ethUtil.addHexPrefix(transaction.data);
+            // Required Fields
+            var requiredFields = transaction.hasOwnProperty('requiredFields') ? transaction.requiredFields : {};
 
-        // Required Fields
-        const requiredFields = transaction.hasOwnProperty('requiredFields') ? transaction.requiredFields : {};
+            // Contract ABI
+            var abi = transaction.hasOwnProperty('abi') ? transaction.abi : null;
+            if (!abi && transaction.hasOwnProperty('data')) throw Error.signatureError('no_abi', 'You must provide a JSON ABI along with your transaction so that users can read the contract');
 
-        // Contract ABI
-        const abi = transaction.hasOwnProperty('abi') ? transaction.abi : null;
-        if(!abi && transaction.hasOwnProperty('data'))
-            throw Error.signatureError('no_abi', 'You must provide a JSON ABI along with your transaction so that users can read the contract');
+            var payload = Object.assign(transaction, { blockchain: Blockchains.ETH, network: ethNetwork, requiredFields: requiredFields });
 
-        const payload = Object.assign(transaction, { blockchain:Blockchains.ETH, network:ethNetwork, requiredFields });
-        const {signatures, returnedFields} = await SocketService.sendApiRequest({
-            type:'requestSignature',
-            payload
-        });
+            var _ref = await SocketService.sendApiRequest({
+                type: 'requestSignature',
+                payload: payload
+            }),
+                signatures = _ref.signatures,
+                returnedFields = _ref.returnedFields;
 
-        if(transaction.hasOwnProperty('fieldsCallback'))
-            transaction.fieldsCallback(returnedFields);
+            if (transaction.hasOwnProperty('fieldsCallback')) transaction.fieldsCallback(returnedFields);
 
-        return signatures[0];
-    }
-}
+            return signatures[0];
+        }
+    }]);
+    return ScatterEthereumWallet;
+}();
 
 /***
  * Setting up for plugin based generators,
  * this will add more blockchain compatibility in the future.
  */
 
-class PluginRepositorySingleton {
+var PluginRepositorySingleton = function () {
+    function PluginRepositorySingleton() {
+        classCallCheck(this, PluginRepositorySingleton);
 
-    constructor(){
         this.plugins = [];
         this.loadPlugins();
     }
 
-    loadPlugins(){
-        this.plugins.push(new EOS());
-        this.plugins.push(new ETH());
-    }
+    createClass(PluginRepositorySingleton, [{
+        key: 'loadPlugins',
+        value: function loadPlugins() {
+            this.plugins.push(new EOS());
+            this.plugins.push(new ETH());
+        }
+    }, {
+        key: 'signatureProviders',
+        value: function signatureProviders() {
+            return this.plugins.filter(function (plugin) {
+                return plugin.type === BLOCKCHAIN_SUPPORT;
+            });
+        }
+    }, {
+        key: 'supportedBlockchains',
+        value: function supportedBlockchains() {
+            return this.signatureProviders().map(function (plugin) {
+                return name;
+            });
+        }
+    }, {
+        key: 'plugin',
+        value: function plugin(name) {
+            return this.plugins.find(function (plugin) {
+                return plugin.name === name;
+            });
+        }
+    }, {
+        key: 'endorsedNetworks',
+        value: async function endorsedNetworks() {
+            return await Promise.all(this.signatureProviders().map(async function (plugin) {
+                return await plugin.getEndorsedNetwork();
+            }));
+        }
+    }]);
+    return PluginRepositorySingleton;
+}();
 
-    signatureProviders(){
-        return this.plugins.filter(plugin => plugin.type === BLOCKCHAIN_SUPPORT);
-    }
+var PluginRepository = new PluginRepositorySingleton();
 
-    supportedBlockchains(){
-        return this.signatureProviders().map(plugin => name)
-    }
-
-    plugin(name){
-        return this.plugins.find(plugin => plugin.name === name);
-    }
-
-    async endorsedNetworks(){
-        return await Promise.all(this.signatureProviders().map(async plugin => await plugin.getEndorsedNetwork()));
-    }
-}
-
-const PluginRepository = new PluginRepositorySingleton();
-
-const throwNoAuth = () => {
-    if(!holder.scatter.isExtension && !SocketService.isConnected())
-        throw new Error('Connect and Authenticate first ( scatter.connect(pluginName, keyGetter, keySetter )');
+var throwNoAuth = function throwNoAuth() {
+    if (!holder.scatter.isExtension && !SocketService.isConnected()) throw new Error('Connect and Authenticate first ( scatter.connect(pluginName, keyGetter, keySetter )');
 };
 
-const checkForPlugin = (resolve, tries = 0) => {
-    if(tries > 20) return;
-    if(holder.scatter.isExtension) return resolve(true);
-    setTimeout(() => checkForPlugin(resolve, tries + 1), 100);
+var checkForPlugin = function checkForPlugin(resolve) {
+    var tries = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+    if (tries > 20) return;
+    if (holder.scatter.isExtension) return resolve(true);
+    setTimeout(function () {
+        return checkForPlugin(resolve, tries + 1);
+    }, 100);
 };
 
-class Scatter {
+var Scatter = function () {
+    function Scatter() {
+        var _this = this;
 
-    constructor(){
-        const noIdFunc = () => { if(!this.identity) throw new Error('No Identity') };
+        classCallCheck(this, Scatter);
 
-        PluginRepository.signatureProviders().map(sigProvider => {
-            this[sigProvider.name] = sigProvider.signatureProvider(noIdFunc);
+        var noIdFunc = function noIdFunc() {
+            if (!_this.identity) throw new Error('No Identity');
+        };
+
+        PluginRepository.signatureProviders().map(function (sigProvider) {
+            _this[sigProvider.name] = sigProvider.signatureProvider(noIdFunc);
         });
 
         this.isExtension = false;
         this.identity = null;
     }
 
-    async isInstalled(){
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve(false);
-            }, 3000);
+    createClass(Scatter, [{
+        key: 'isInstalled',
+        value: async function isInstalled() {
+            return new Promise(function (resolve) {
+                setTimeout(function () {
+                    resolve(false);
+                }, 3000);
 
-            Promise.race([
-                checkForPlugin(resolve),
-                SocketService.ping().then(found => {
+                Promise.race([checkForPlugin(resolve), SocketService.ping().then(function (found) {
                     console.log('found', found);
-                    if(found) resolve(true);
-                })
-            ]);
+                    if (found) resolve(true);
+                })]);
 
-
-
-            // Tries to set up Desktop Connection
-
-        })
-    }
-
-    async connect(pluginName, options){
-        return new Promise(resolve => {
-            if(!pluginName || !pluginName.length) throw new Error("You must specify a name for this connection");
-
-            // Setting options defaults
-            options = Object.assign({initTimeout:10000, linkTimeout:30000}, options);
-
-            // Auto failer
-            setTimeout(() => {
-                resolve(false);
-            }, options.initTimeout);
-
-            // Defaults to scatter extension if exists
-            checkForPlugin(resolve);
-
-            // Tries to set up Desktop Connection
-            SocketService.init(pluginName, options.linkTimeout);
-            SocketService.link().then(async authenticated => {
-                if(!authenticated) return false;
-                this.identity = await this.getIdentityFromPermissions();
-                return resolve(true);
+                // Tries to set up Desktop Connection
             });
-        })
-    }
+        }
+    }, {
+        key: 'connect',
+        value: async function connect(pluginName, options) {
+            var _this2 = this;
 
-    disconnect(){
-        return SocketService.disconnect();
-    }
+            return new Promise(function (resolve) {
+                if (!pluginName || !pluginName.length) throw new Error("You must specify a name for this connection");
 
-    isConnected(){
-        return SocketService.isConnected();
-    }
+                // Setting options defaults
+                options = Object.assign({ initTimeout: 10000, linkTimeout: 30000 }, options);
 
-    getVersion(){
-        return SocketService.sendApiRequest({
-            type:'getVersion',
-            payload:{}
-        });
-    }
+                // Auto failer
+                setTimeout(function () {
+                    resolve(false);
+                }, options.initTimeout);
 
-    getIdentity(requiredFields){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'getOrRequestIdentity',
-            payload:{
-                fields:requiredFields
-            }
-        }).then(id => {
-            if(id) this.identity = id;
-            return id;
-        });
-    }
+                // Defaults to scatter extension if exists
+                checkForPlugin(resolve);
 
-    getIdentityFromPermissions(){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'identityFromPermissions',
-            payload:{}
-        }).then(id => {
-            if(id) this.identity = id;
-            return id;
-        });
-    }
+                // Tries to set up Desktop Connection
+                SocketService.init(pluginName, options.linkTimeout);
+                SocketService.link().then(async function (authenticated) {
+                    if (!authenticated) return false;
+                    _this2.identity = await _this2.getIdentityFromPermissions();
+                    return resolve(true);
+                });
+            });
+        }
+    }, {
+        key: 'disconnect',
+        value: function disconnect() {
+            return SocketService.disconnect();
+        }
+    }, {
+        key: 'isConnected',
+        value: function isConnected() {
+            return SocketService.isConnected();
+        }
+    }, {
+        key: 'getVersion',
+        value: function getVersion() {
+            return SocketService.sendApiRequest({
+                type: 'getVersion',
+                payload: {}
+            });
+        }
+    }, {
+        key: 'getIdentity',
+        value: async function getIdentity(requiredFields) {
+            var _this3 = this;
 
-    forgetIdentity(){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'forgetIdentity',
-            payload:{}
-        }).then(res => {
-            this.identity = null;
-            return res;
-        });
-    }
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'getOrRequestIdentity',
+                payload: {
+                    fields: requiredFields
+                }
+            }).then(function (id) {
+                if (id) _this3.identity = id;
+                return id;
+            });
+        }
+    }, {
+        key: 'getIdentityFromPermissions',
+        value: function getIdentityFromPermissions() {
+            var _this4 = this;
 
-    authenticate(){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'authenticate',
-            payload:{}
-        });
-    }
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'identityFromPermissions',
+                payload: {}
+            }).then(function (id) {
+                if (id) _this4.identity = id;
+                return id;
+            });
+        }
+    }, {
+        key: 'forgetIdentity',
+        value: function forgetIdentity() {
+            var _this5 = this;
 
-    getArbitrarySignature(publicKey, data, whatfor = '', isHash = false){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'requestArbitrarySignature',
-            payload:{
-                publicKey,
-                data,
-                whatfor,
-                isHash
-            }
-        });
-    }
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'forgetIdentity',
+                payload: {}
+            }).then(function (res) {
+                _this5.identity = null;
+                return res;
+            });
+        }
+    }, {
+        key: 'authenticate',
+        value: function authenticate() {
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'authenticate',
+                payload: {}
+            });
+        }
+    }, {
+        key: 'getArbitrarySignature',
+        value: function getArbitrarySignature(publicKey, data) {
+            var whatfor = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
+            var isHash = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
 
-    suggestNetwork(network){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'requestAddNetwork',
-            payload:{
-                network
-            }
-        });
-    }
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'requestArbitrarySignature',
+                payload: {
+                    publicKey: publicKey,
+                    data: data,
+                    whatfor: whatfor,
+                    isHash: isHash
+                }
+            });
+        }
+    }, {
+        key: 'suggestNetwork',
+        value: function suggestNetwork(network) {
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'requestAddNetwork',
+                payload: {
+                    network: network
+                }
+            });
+        }
+    }, {
+        key: 'requestSignature',
+        value: function requestSignature(payload) {
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'requestSignature',
+                payload: payload
+            });
+        }
+    }, {
+        key: 'createTransaction',
+        value: function createTransaction(blockchain, actions, account, network) {
+            throwNoAuth();
+            return SocketService.sendApiRequest({
+                type: 'createTransaction',
+                payload: {
+                    blockchain: blockchain,
+                    actions: actions,
+                    account: account,
+                    network: network
+                }
+            });
+        }
+    }]);
+    return Scatter;
+}();
 
-    requestSignature(payload){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'requestSignature',
-            payload
-        });
-    }
+var Holder = function Holder(_scatter) {
+    classCallCheck(this, Holder);
 
-    createTransaction(blockchain, actions, account, network){
-        throwNoAuth();
-        return SocketService.sendApiRequest({
-            type:'createTransaction',
-            payload:{
-                blockchain,
-                actions,
-                account,
-                network
-            }
-        });
-    }
-}
+    this.scatter = _scatter;
+};
 
-
-class Holder {
-    constructor(_scatter){
-        this.scatter = _scatter;
-    }
-}
-
-
-let holder = new Holder(new Scatter());
-if(typeof window !== 'undefined') window.scatter = holder.scatter;
+var holder = new Holder(new Scatter());
+if (typeof window !== 'undefined') window.scatter = holder.scatter;
 
 // Catching extension instead of Desktop
-if(typeof document !== 'undefined'){
-    document.addEventListener('scatterLoaded', scatterExtension => {
+if (typeof document !== 'undefined') {
+    document.addEventListener('scatterLoaded', function (scatterExtension) {
         holder.scatter = window.scatter;
         holder.scatter.isExtension = true;
+        holder.scatter.connect = function () {
+            return new Promise(function (resolve) {
+                return resolve(true);
+            });
+        };
     });
 }
 
